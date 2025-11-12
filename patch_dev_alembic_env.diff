@@ -1,0 +1,201 @@
+diff --git a/.env b/.env
+new file mode 100644
+index 0000000..a1b2c3d
+--- /dev/null
++++ b/.env
+@@
++APP_ENV=DEV
++DATABASE_URL=sqlite:///./data.db
+diff --git a/.gitignore b/.gitignore
+index e69de29..f74c5a1 100644
+--- a/.gitignore
++++ b/.gitignore
+@@
++# Environment & dependencies
++.env
++/venv/
++/__pycache__/
++/migrations/__pycache__/
++/pytest_cache/
++
++# Databases
++*.db
++
++# IDE & system files
++.DS_Store
++.idea/
+diff --git a/backend/config.py b/backend/config.py
+new file mode 100644
+index 0000000..4c3f32d
+--- /dev/null
++++ b/backend/config.py
+@@
++from dotenv import load_dotenv
++import os
++
++load_dotenv()
++
++APP_ENV = os.getenv("APP_ENV", "DEV")
++DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./data.db")
+diff --git a/backend/models.py b/backend/models.py
+index 4d2e9a4..a7e5b1c 100644
+--- a/backend/models.py
++++ b/backend/models.py
+@@ -2,8 +2,11 @@
+ from sqlalchemy import Column, Integer, String, Text, ForeignKey, create_engine
+ from sqlalchemy.orm import declarative_base, relationship, sessionmaker
+ Base = declarative_base()
+-engine = create_engine("sqlite:///./data.db", connect_args={"check_same_thread": False})
+-SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
++
++from .config import DATABASE_URL
++engine = create_engine(
++    DATABASE_URL,
++    connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
++)
++SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+diff --git a/requirements.txt b/requirements.txt
+index 9a2b7c1..b43a56e 100644
+--- a/requirements.txt
++++ b/requirements.txt
+@@
+ fastapi==0.110.0
+ uvicorn[standard]==0.23.2
+ Jinja2==3.1.2
+ SQLAlchemy==1.4.52
+ pydantic==1.10.13
+ python-multipart==0.0.9
++alembic==1.13.3
++python-dotenv==1.0.1
++pytest==8.3.3
+diff --git a/alembic.ini b/alembic.ini
+new file mode 100644
+index 0000000..5b6a7c2
+--- /dev/null
++++ b/alembic.ini
+@@
++[alembic]
++script_location = migrations
++sqlalchemy.url = sqlite:///./data.db
++
++[loggers]
++keys = root,sqlalchemy,alembic
++
++[handlers]
++keys = console
++
++[formatters]
++keys = generic
++
++[logger_root]
++level = WARN
++handlers = console
++qualname =
++
++[logger_sqlalchemy]
++level = WARN
++handlers =
++qualname = sqlalchemy.engine
++
++[logger_alembic]
++level = INFO
++handlers =
++qualname = alembic
++
++[handler_console]
++class = StreamHandler
++args = (sys.stderr,)
++level = NOTSET
++formatter = generic
++
++[formatter_generic]
++format = %(levelname)-5.5s [%(name)s] %(message)s
+diff --git a/migrations/env.py b/migrations/env.py
+new file mode 100644
+index 0000000..1f3d6a2
+--- /dev/null
++++ b/migrations/env.py
+@@
++from logging.config import fileConfig
++from sqlalchemy import engine_from_config, pool
++from alembic import context
++from backend.models import Base, engine
++
++config = context.config
++fileConfig(config.config_file_name)
++target_metadata = Base.metadata
++
++def run_migrations_offline():
++    context.configure(
++        url=str(engine.url),
++        target_metadata=target_metadata,
++        literal_binds=True,
++        dialect_opts={"paramstyle": "named"},
++    )
++    with context.begin_transaction():
++        context.run_migrations()
++
++def run_migrations_online():
++    connectable = engine_from_config(
++        config.get_section(config.config_ini_section),
++        prefix="sqlalchemy.",
++        poolclass=pool.NullPool,
++    )
++    with connectable.connect() as connection:
++        context.configure(connection=connection, target_metadata=target_metadata)
++        with context.begin_transaction():
++            context.run_migrations()
++
++if context.is_offline_mode():
++    run_migrations_offline()
++else:
++    run_migrations_online()
+diff --git a/.github/workflows/db-ci.yml b/.github/workflows/db-ci.yml
+new file mode 100644
+index 0000000..b3c2e1d
+--- /dev/null
++++ b/.github/workflows/db-ci.yml
+@@
++name: Database CI
++
++on:
++  push:
++    branches: ["dev"]
++
++jobs:
++  test:
++    runs-on: ubuntu-latest
++
++    steps:
++    - name: Checkout repository
++      uses: actions/checkout@v4
++
++    - name: Set up Python
++      uses: actions/setup-python@v5
++      with:
++        python-version: "3.10"
++
++    - name: Install dependencies
++      run: |
++        pip install -r requirements.txt
++
++    - name: Run Alembic migrations
++      run: |
++        alembic upgrade head
++
++    - name: Run tests
++      run: |
++        pytest
+diff --git a/tests/test_db_connection.py b/tests/test_db_connection.py
+new file mode 100644
+index 0000000..8c4e1b2
+--- /dev/null
++++ b/tests/test_db_connection.py
+@@
++from backend import models
++
++def test_database_connection():
++    db = next(models.get_db())
++    result = db.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()
++    table_names = [r[0] for r in result]
++    assert "tasks" in table_names or "changes" in table_names
