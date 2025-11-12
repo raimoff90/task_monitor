@@ -1,0 +1,84 @@
+diff --git a/backend/models.py b/backend/models.py
+index 3b5f1a2..4d2e9a4 100644
+--- a/backend/models.py
++++ b/backend/models.py
+@@ -14,3 +14,20 @@ class Task(Base):
+     priority = Column(Integer, default=2)
+     sort_order = Column(Integer, default=0)
++
++class Change(Base):
++    __tablename__ = "changes"
++    id = Column(Integer, primary_key=True, autoincrement=True)
++    task_id = Column(Integer, ForeignKey("tasks.id"))
++    timestamp = Column(String(64), nullable=False)
++    change_type = Column(String(64), nullable=False)
++    details = Column(Text, default="")
++
++    task = relationship("Task", backref="changes")
++
++# ensure tables exist
++Base.metadata.create_all(engine)
++
++def get_db():
++    db = SessionLocal()
++    try:
++        yield db
++    finally:
++        db.close()
+diff --git a/backend/main.py b/backend/main.py
+index 6a92b3b..e821cd8 100644
+--- a/backend/main.py
++++ b/backend/main.py
+@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
+ from sqlalchemy.orm import Session
+ from jinja2 import Environment, FileSystemLoader, select_autoescape
+ from datetime import datetime
+-import io, csv, json, sqlite3
++import io, csv, json
+ from . import models
+ 
+ app = FastAPI()
+@@ -110,6 +110,41 @@ async def export_tasks():
+     return StreamingResponse(buffer, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=tasks.csv"})
+ 
+ 
++# ORM-based change logging
++def log_change(db: Session, task_id: int, change_type: str, details: str = ""):
++    change = models.Change(
++        task_id=task_id,
++        timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
++        change_type=change_type,
++        details=details,
++    )
++    db.add(change)
++    db.commit()
++
++
++@app.get("/history", response_class=HTMLResponse)
++async def history(request: Request):
++    db = next(models.get_db())
++    changes = db.query(models.Change).order_by(models.Change.id.desc()).all()
++
++    rows = []
++    for ch in changes:
++        task_title = db.query(models.Task.title).filter(models.Task.id == ch.task_id).scalar()
++        rows.append({
++            "id": ch.id,
++            "task_id": ch.task_id,
++            "task_title": task_title or "Unknown",
++            "timestamp": ch.timestamp,
++            "change_type": ch.change_type,
++            "details": ch.details,
++        })
++
++    template = env.get_template("history.html")
++    return template.render({"request": request, "changes": rows})
++
++
++# example usage inside existing handlers:
++# db = next(models.get_db())
++# log_change(db, task_id, "create", "Task created")
++
+ if __name__ == "__main__":
+     import uvicorn
+     uvicorn.run(app, host="0.0.0.0", port=8000)
