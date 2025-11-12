@@ -1,0 +1,19 @@
+# macOS system files
+.DS_Store
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual environment
+venv/
+
+# Local SQLite database
+*.db
+
+# VSCode / PyCharm
+.vscode/
+.idea/
+
+# Logs
+*.log
