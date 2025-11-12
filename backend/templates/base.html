@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Task Monitor</title>
+  <script>(function(){try{var t=localStorage.getItem('theme')||'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar"><div class="container flex-between">
+  <a class="brand" href="/">Task Monitor</a>
+  <nav class="nav">
+    <a class="btn subtle" href="/history" title="Журнал изменений">🕘</a>
+    <a class="btn subtle" href="/export/csv" title="Выгрузить CSV">⤓ CSV</a>
+    <button class="btn subtle" id="theme-toggle" title="Светлая/тёмная тема">🌓</button>
+    <a class="btn" href="/task/new">＋ Добавить задачу</a>
+    <a class="btn" href="/people">👤 Ответственные</a>
+  </nav>
+</div></header>
+<main class="container">{% block content %}{% endblock %}</main>
+<div id="toasts" class="toast-wrap"></div>
+<script src="/static/app.js"></script>
+</body></html>

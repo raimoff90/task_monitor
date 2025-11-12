@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="h1">Ответственные</h1>
+<form method="post" action="/people/create" class="row" style="margin-bottom:10px">
+  <input class="input" type="text" name="name" placeholder="Имя" required>
+  <button class="btn primary">＋ Добавить</button>
+</form>
+<div class="table-wrap">
+<table class="table people-table">
+  <colgroup>
+    <col style="width:30ch">
+    <col style="width:5ch">
+  </colgroup>
+  <thead><tr><th>Имя</th><th></th></tr></thead>
+  <tbody>
+    {% for p in people %}
+    <tr>
+      <td class="ellipsis">{{ p.name }}</td>
+      <td>
+        <form method="post" action="/people/{{ p.id }}/delete" class="inline" onsubmit="return confirm('Удалить ответственного?')">
+          <button class="icon-btn" title="Удалить">🗑️</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

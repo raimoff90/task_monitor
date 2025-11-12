@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="h1">Jira-задачи для: {{ task.title[:80] }}{% if task.title|length > 80 %}…{% endif %}</h1>
+<div class="card">
+  <form class="row" method="post" action="/task/{{ task.id }}/jira/add">
+    <input class="input" name="key" placeholder="ABC-123" required>
+    <input class="input" name="title" placeholder="Краткое название">
+    <input class="input" name="url" placeholder="https://jira/...">
+    <button class="btn primary">＋ Добавить</button>
+  </form>
+  <table class="table" style="margin-top:10px">
+    <thead><tr><th>Ключ</th><th>Название</th><th>Ссылка</th><th style="width:80px;"></th></tr></thead>
+    <tbody>
+      {% if items %}{% for it in items %}
+      <tr><td>{{ it.key }}</td><td>{{ it.title }}</td><td>{% if it.url %}<a class="btn" href="{{ it.url }}" target="_blank">Открыть</a>{% else %}—{% endif %}</td>
+        <td><form method="post" action="/task/{{ task.id }}/jira/delete/{{ it.id }}" onsubmit="return confirm('Удалить из Jira-списка?')"><button class="btn">🗑️</button></form></td></tr>
+      {% endfor %}{% else %}<tr><td colspan="4" class="muted">Пока пусто</td></tr>{% endif %}
+    </tbody>
+  </table>
+  <div class="actions" style="margin-top:10px"><a href="/" class="btn primary">💾 Сохранить и на дашборд</a></div>
+</div>
+{% endblock %}

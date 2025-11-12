@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="h1">{{ 'Добавить задачу' if not task else 'Редактировать задачу' }}</h1>
+<div class="grid-2">
+  <div><div class="card">
+    <form id="task-form" action="/task/save" method="post">
+      {% if task %}<input type="hidden" name="task_id" value="{{ task.id }}">{% endif %}
+      <label class="label">Название (до 80 символов)</label>
+      <input class="input" name="title" maxlength="80" required value="{{ task.title if task else '' }}">
+      <label class="label">Краткое описание</label>
+      <textarea class="input" name="details">{{ task.details if task else '' }}</textarea>
+      <div class="row">
+        <div><label class="label">Статус</label><input class="input" name="status" value="{{ task.status if task else 'new' }}"></div>
+        <div><label class="label">Приоритет</label>{% set pr = task.priority if task else 2 %}
+          <select class="input" name="priority">
+            <option value="1" {% if pr==1 %}selected{% endif %}>низкий</option>
+            <option value="2" {% if pr==2 %}selected{% endif %}>средний</option>
+            <option value="3" {% if pr==3 %}selected{% endif %}>высокий</option>
+          </select></div>
+      </div>
+      <div class="row">
+        <div><label class="label">DEV статус</label><input class="input" name="dev_status" value="{{ task.dev_status if task else '' }}"></div>
+        <div><label class="label">DEMO статус</label><input class="input" name="demo_status" value="{{ task.demo_status if task else '' }}"></div>
+      </div>
+      <div class="row">
+        <div><label class="label">LT статус</label><input class="input" name="lt_status" value="{{ task.lt_status if task else '' }}"></div>
+        <div><label class="label">PROD статус</label><input class="input" name="prod_status" value="{{ task.prod_status if task else '' }}"></div>
+      </div>
+      <div class="card muted-bg">
+        <div class="label">Цвет задачи по контурам (фиксированные)</div>
+        {% set devc = task.dev_color if task else 'sky' %}
+        {% set democ = task.demo_color if task else 'sky' %}
+        {% set ltc = task.lt_color if task else 'sky' %}
+        {% set prodc = task.prod_color if task else 'sky' %}
+        {% for pair in [('DEV', devc), ('DEMO', democ), ('LT', ltc), ('PROD', prodc)] %}
+        <div class="color-row">
+          <div class="stage-name">{{ pair[0] }}</div>
+          {% set cur = pair[1] %}
+          {% for key in ['sky','amber','emerald','rose'] %}
+          <label class="color-radio"><input type="radio" name="{{ pair[0].lower() }}_color" value="{{ key }}" {% if cur==key %}checked{% endif %}><span class="dot {{ key }}"></span></label>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+      <div class="row">
+        <div><label class="label">Порядок на доске</label>
+          <select class="input" name="order_index">
+            {% set tc = tasks_count if tasks_count>0 else 1 %}
+            {% for i in range(0, tc) %}<option value="{{ i }}" {% if task and task.sort_order==i %}selected{% endif %}>{{ i+1 }}</option>{% endfor %}
+          </select></div>
+        <div><label class="label">Комментарии без ответственного</label>
+          <textarea class="input" name="orphan_notes">{{ task.orphan_notes if task else '' }}</textarea></div>
+      </div>
+      <input type="hidden" name="assign_json" id="assign_json">
+      <input type="hidden" name="assign_guard" id="assign_guard" value="0">
+      <div class="actions"><button type="submit" id="btn-save" class="btn primary">💾 Сохранить</button><a href="/" class="btn">← На дашборд</a></div>
+    </form>
+  </div></div>
+  <div><div class="card">
+    <div class="label">Ответственные по этапам</div>
+    {% for st in STAGES %}
+    <div class="stage-block"><div class="stage-title">{{ st }}</div>
+      <ul class="assign-grid">
+        {% for p in people %}
+        {% set checked = False %}{% set comment = '' %}
+        {% if task %}{% for a in task.assignments %}{% if a.stage==st and a.person_id==p.id %}{% set checked = True %}{% set comment = a.comment or '' %}{% endif %}{% endfor %}{% endif %}
+        <li class="assign-row">
+          <label class="chk"><input type="checkbox" data-stage="{{ st }}" data-person="{{ p.id }}" {% if checked %}checked{% endif %}><span class="name">{{ p.name }}</span></label>
+          <input class="input small comment" type="text" placeholder="Комментарий" data-stage="{{ st }}" data-person="{{ p.id }}" value="{{ comment|e }}">
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endfor %}
+  </div></div>
+</div>
+<script>
+function collectAssignments(){
+  const items = []; ["DEV","DEMO","LT","PROD"].forEach(st => {
+    document.querySelectorAll(`input[type=checkbox][data-stage="${st}"]`).forEach(chk => {
+      const pid = chk.dataset.person;
+      const cmtEl = document.querySelector(`input.input.small.comment[data-stage="${st}"][data-person="${pid}"]`);
+      const cmt = cmtEl ? (cmtEl.value || "") : "";
+      if (chk.checked) items.push({person_id: Number(pid), stage: st, comment: cmt});
+    });
+  }); return items;
+}
+document.getElementById('task-form').addEventListener('submit', (e) => { document.getElementById('assign_guard').value = '1';
+  document.getElementById('assign_json').value = JSON.stringify(collectAssignments());
+});
+</script>
+{% endblock %}
