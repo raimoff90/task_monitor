@@ -1,0 +1,118 @@
+diff --git a/backend/config.py b/backend/config.py
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/backend/config.py
+@@ -0,0 +1,26 @@
++import os
++from pathlib import Path
++
++BASE_DIR = Path(__file__).resolve().parent.parent
++
++# .env is optional; if present, load it
++try:
++    from dotenv import load_dotenv  # type: ignore
++    env_path = BASE_DIR / ".env"
++    if env_path.exists():
++        load_dotenv(env_path)
++except Exception:
++    pass
++
++DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./data.db")
++ENV = os.getenv("ENV", "development")
++
+diff --git a/backend/db.py b/backend/db.py
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/backend/db.py
+@@ -0,0 +1,23 @@
++from sqlalchemy import create_engine
++from sqlalchemy.orm import sessionmaker
++from backend.config import DATABASE_URL
++
++# Для SQLite нужен специальный аргумент
++connect_args = {}
++if DATABASE_URL.startswith("sqlite"):
++    connect_args = {"check_same_thread": False}
++
++engine = create_engine(DATABASE_URL, connect_args=connect_args)
++SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
++
++def get_db():
++    db = SessionLocal()
++    try:
++        yield db
++    finally:
++        db.close()
++
+diff --git a/backend/changelog.py b/backend/changelog.py
+new file mode 100644
+index 0000000..3333333
+--- /dev/null
++++ b/backend/changelog.py
+@@ -0,0 +1,45 @@
++from datetime import datetime
++from sqlalchemy import Column, Integer, String, DateTime, Text
++from sqlalchemy.orm import declarative_base, Session
++
++BaseChange = declarative_base()
++
++class ChangeLog(BaseChange):
++    __tablename__ = "change_log"
++    id = Column(Integer, primary_key=True, autoincrement=True)
++    action = Column(String(64), nullable=False)
++    entity = Column(String(64), nullable=False)
++    details = Column(Text, default="")
++    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
++
++def log_change(db: Session, action: str, entity: str, details: str = "") -> None:
++    entry = ChangeLog(action=action, entity=entity, details=details)
++    db.add(entry)
++    db.commit()
++
+diff --git a/scripts/seed.py b/scripts/seed.py
+new file mode 100644
+index 0000000..4444444
+--- /dev/null
++++ b/scripts/seed.py
+@@ -0,0 +1,49 @@
++"""Простой сидинг тестовых данных.
++Запуск:  python -m scripts.seed
++"""
++from backend.db import SessionLocal, engine
++from backend.models import Base, Task
++
++
++def run():
++    # Создаем таблицы, если их нет (для локального дев-старта)
++    Base.metadata.create_all(bind=engine)
++
++    db = SessionLocal()
++    try:
++        if not db.query(Task).first():
++            db.add_all([
++                Task(title="Demo task 1", status="new", sort_order=1),
++                Task(title="Demo task 2", status="in_progress", sort_order=2),
++            ])
++            db.commit()
++            print("Seed: added demo tasks")
++        else:
++            print("Seed: tasks already exist, skip")
++    finally:
++        db.close()
++
++
++if __name__ == "__main__":
++    run()
++
+diff --git a/.env.example b/.env.example
+new file mode 100644
+index 0000000..5555555
+--- /dev/null
++++ b/.env.example
+@@ -0,0 +1,4 @@
++# Пример файла окружения
++# Для SQLite по умолчанию ничего менять не нужно
++DATABASE_URL=sqlite:///./data.db
++ENV=development

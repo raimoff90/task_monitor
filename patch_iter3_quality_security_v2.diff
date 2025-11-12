@@ -1,0 +1,106 @@
+diff --git a/tests/test_tasks.py b/tests/test_tasks.py
+new file mode 100644
+index 0000000..9999999
+--- /dev/null
++++ b/tests/test_tasks.py
+@@ -0,0 +1,23 @@
++from fastapi.testclient import TestClient
++from backend.app import app
++
++client = TestClient(app)
++
++def test_health():
++    r = client.get("/healthz")
++    assert r.status_code == 200
++    assert r.json().get("status") == "ok"
++
++def test_list_tasks():
++    r = client.get("/api/tasks/")
++    assert r.status_code == 200
++    assert isinstance(r.json(), list)
++
+diff --git a/.github/workflows/ci-advanced.yml b/.github/workflows/ci-advanced.yml
+new file mode 100644
+index 0000000..aaaaaaa
+--- /dev/null
++++ b/.github/workflows/ci-advanced.yml
+@@ -0,0 +1,66 @@
++name: Advanced CI
++
++on:
++  push:
++    branches: [ "dev" ]
++  pull_request:
++    branches: [ "dev" ]
++
++jobs:
++  build:
++    runs-on: ubuntu-latest
++    steps:
++      - uses: actions/checkout@v4
++
++      - name: Set up Python
++        uses: actions/setup-python@v5
++        with:
++          python-version: '3.10'
++
++      - name: Install deps
++        run: |
++          python -m pip install --upgrade pip
++          pip install -r requirements.txt
++          pip install alembic pytest
++
++      - name: Alembic migrate
++        run: alembic upgrade head
++
++      - name: Run tests
++        run: pytest -q
++
+diff --git a/Dockerfile b/Dockerfile
+new file mode 100644
+index 0000000..bbbbbbb
+--- /dev/null
++++ b/Dockerfile
+@@ -0,0 +1,18 @@
++FROM python:3.10-slim
++WORKDIR /app
++COPY . .
++RUN pip install --no-cache-dir -r requirements.txt && pip install alembic
++EXPOSE 8000
++CMD ["uvicorn", "backend.app:app", "--host", "0.0.0.0", "--port", "8000"]
++
+diff --git a/docker-compose.yml b/docker-compose.yml
+new file mode 100644
+index 0000000..ccccccc
+--- /dev/null
++++ b/docker-compose.yml
+@@ -0,0 +1,14 @@
++version: "3.9"
++services:
++  task-monitor:
++    build: .
++    ports:
++      - "8000:8000"
++    environment:
++      - ENV=production
++      - DATABASE_URL=sqlite:///./data.db
++    volumes:
++      - .:/app
++
+diff --git a/Makefile b/Makefile
+new file mode 100644
+index 0000000..ddddddd
+--- /dev/null
++++ b/Makefile
+@@ -0,0 +1,17 @@
++run:
++	uvicorn backend.app:app --reload
++
++migrate:
++	alembic upgrade head
++
++seed:
++	python -m scripts.seed
++
++test:
++	pytest -q

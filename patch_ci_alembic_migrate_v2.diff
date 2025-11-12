@@ -1,0 +1,55 @@
+diff --git a/.github/workflows/python-ci.yml b/.github/workflows/python-ci.yml
+new file mode 100644
+index 0000000..e2f3caa
+--- /dev/null
++++ b/.github/workflows/python-ci.yml
+@@ -0,0 +1,47 @@
++name: Python CI - Alembic Migration
++
++on:
++  push:
++    branches:
++      - dev
++
++jobs:
++  alembic_migration:
++    runs-on: ubuntu-latest
++
++    steps:
++      - name: Checkout repository
++        uses: actions/checkout@v4
++
++      - name: Set up Python
++        uses: actions/setup-python@v5
++        with:
++          python-version: '3.10'
++
++      - name: Install dependencies
++        run: |
++          python -m pip install --upgrade pip
++          pip install -r requirements.txt
++
++      - name: Ensure Alembic environment exists
++        run: |
++          echo "✅ Checking Alembic environment..."
++          if [ ! -d "migrations" ]; then
++            alembic init migrations
++          fi
++
++      - name: Run Alembic migrations
++        run: |
++          echo "🚀 Applying Alembic migrations..."
++          alembic upgrade head
++
++      - name: Validate FastAPI syntax
++        run: |
++          echo "🧪 Checking FastAPI syntax..."
++          python -m compileall backend
++
++      - name: Summary
++        run: |
++          echo "✅ Alembic migrations successfully applied."
++          echo "✅ Python syntax verified."
++
++    env:
++      PYTHONPATH: ${{ github.workspace }}

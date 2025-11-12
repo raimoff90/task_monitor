@@ -1,0 +1,17 @@
+
+diff --git a/backend/config.py b/backend/config.py
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/backend/config.py
+@@
++# Database and App Configuration
++import os
++BASE_DIR = os.path.dirname(os.path.abspath(__file__))
++DATABASE_URL = "sqlite:///./data.db"
++
++class Settings:
++    app_name = "Task Monitor"
++    debug = True
++
++settings = Settings()

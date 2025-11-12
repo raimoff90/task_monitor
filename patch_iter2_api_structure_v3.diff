@@ -1,0 +1,14 @@
+
+diff --git a/backend/api/__init__.py b/backend/api/__init__.py
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/backend/api/__init__.py
+@@
++# API package initialization
++from fastapi import APIRouter
++router = APIRouter()
++
++from . import tasks, users
++
++__all__ = ["router"]

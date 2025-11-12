@@ -1,0 +1,25 @@
+diff --git a/backend/main.py b/backend/main.py
+--- a/backend/main.py
++++ b/backend/main.py
+@@ -1,10 +1,10 @@
+ from fastapi import FastAPI, Request, Depends, Form
+ from fastapi.templating import Jinja2Templates
+ from fastapi.responses import RedirectResponse
+ from sqlalchemy.orm import Session
+-import backend.models as models
+-
+-models.Base.metadata.create_all(bind=models.engine)
++from backend.db import SessionLocal
++from backend.config import DATABASE_URL
++
+ from backend.utils import ensure_seed
+ from backend.history import log_change
+@@ -35,9 +35,6 @@
+     return db
+
+ @app.get("/")
+ async def home(request: Request, db: Session = Depends(get_db)):
+-    # Удаляем сидинг из основного роута
+-    ensure_seed(db)
+     tasks = db.query(models.Task).all()
+     return templates.TemplateResponse("index.html", {"request": request, "tasks": tasks})

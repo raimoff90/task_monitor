@@ -1,0 +1,31 @@
+diff --git a/backend/schemas.py b/backend/schemas.py
+new file mode 100644
+--- /dev/null
++++ b/backend/schemas.py
+@@ -0,0 +1,38 @@
++from pydantic import BaseModel, constr
++from enum import Enum
++
++class StageEnum(str, Enum):
++    dev = "DEV"
++    demo = "DEMO"
++    lt = "LT"
++    prod = "PROD"
++
++class TaskIn(BaseModel):
++    title: constr(min_length=1, max_length=200)
++    status: constr(max_length=64)
++    dev_status: str | None = None
++    demo_status: str | None = None
++    lt_status: str | None = None
++    prod_status: str | None = None
++
++class TaskOut(TaskIn):
++    id: int
++    class Config:
++        orm_mode = True
++
++class AssignmentIn(BaseModel):
++    person_id: int
++    task_id: int
++    stage: StageEnum

@@ -1,0 +1,32 @@
+
+diff --git a/.github/workflows/python-ci.yml b/.github/workflows/python-ci.yml
+new file mode 100644
+index 0000000..3333333
+--- /dev/null
++++ b/.github/workflows/python-ci.yml
+@@
++name: Python CI
++
++on:
++  push:
++    branches: [ dev ]
++  pull_request:
++    branches: [ dev ]
++
++jobs:
++  build:
++    runs-on: ubuntu-latest
++    steps:
++      - uses: actions/checkout@v4
++      - name: Set up Python
++        uses: actions/setup-python@v4
++        with:
++          python-version: '3.10'
++      - name: Install dependencies
++        run: |
++          pip install -r requirements.txt
++          pip install alembic pytest
++      - name: Run migrations
++        run: alembic upgrade head
++      - name: Run tests
++        run: pytest -v

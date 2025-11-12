@@ -1,0 +1,103 @@
+diff --git a/backend/schemas.py b/backend/schemas.py
+new file mode 100644
+index 0000000..6666666
+--- /dev/null
++++ b/backend/schemas.py
+@@ -0,0 +1,56 @@
++from enum import Enum
++from pydantic import BaseModel, constr
++
++class StageEnum(str, Enum):
++    DEV = "DEV"
++    DEMO = "DEMO"
++    LT = "LT"
++    PROD = "PROD"
++
++class TaskIn(BaseModel):
++    title: constr(min_length=1, max_length=200)
++    status: constr(max_length=64) = "new"
++    dev_status: str | None = None
++    demo_status: str | None = None
++    lt_status: str | None = None
++    prod_status: str | None = None
++    priority: int | None = 2
++    sort_order: int | None = 0
++
++class TaskOut(TaskIn):
++    id: int
++    class Config:
++        from_attributes = True
++
++class AssignmentIn(BaseModel):
++    person_id: int
++    task_id: int
++    stage: StageEnum
++
+diff --git a/backend/routes/tasks.py b/backend/routes/tasks.py
+new file mode 100644
+index 0000000..7777777
+--- /dev/null
++++ b/backend/routes/tasks.py
+@@ -0,0 +1,83 @@
++from fastapi import APIRouter, Depends, HTTPException
++from sqlalchemy.orm import Session
++from backend.db import get_db
++from backend import models
++from backend.schemas import TaskIn, TaskOut
++
++router = APIRouter(prefix="/api/tasks", tags=["tasks"])
++
++@router.get("/", response_model=list[TaskOut])
++def list_tasks(db: Session = Depends(get_db)):
++    qs = db.query(models.Task).order_by(models.Task.sort_order.asc())
++    return qs.all()
++
++@router.post("/", response_model=TaskOut, status_code=201)
++def create_task(payload: TaskIn, db: Session = Depends(get_db)):
++    task = models.Task(
++        title=payload.title,
++        status=payload.status,
++        dev_status=payload.dev_status,
++        demo_status=payload.demo_status,
++        lt_status=payload.lt_status,
++        prod_status=payload.prod_status,
++        priority=payload.priority or 2,
++        sort_order=payload.sort_order or 0,
++    )
++    db.add(task)
++    db.commit()
++    db.refresh(task)
++    return task
++
++@router.get("/{task_id}", response_model=TaskOut)
++def get_task(task_id: int, db: Session = Depends(get_db)):
++    task = db.query(models.Task).get(task_id)
++    if not task:
++        raise HTTPException(status_code=404, detail="Task not found")
++    return task
++
+diff --git a/backend/app.py b/backend/app.py
+new file mode 100644
+index 0000000..8888888
+--- /dev/null
++++ b/backend/app.py
+@@ -0,0 +1,25 @@
++from fastapi import FastAPI
++from fastapi.staticfiles import StaticFiles
++from backend.routes.tasks import router as tasks_router
++
++app = FastAPI(title="Task Monitor API")
++
++# Если есть статика — смонтируем (необязательно)
++try:
++    app.mount("/static", StaticFiles(directory="backend/static"), name="static")
++except Exception:
++    pass
++
++# Подключаем маршруты
++app.include_router(tasks_router)
++
++# Healthcheck
++@app.get("/healthz")
++def healthz():
++    return {"status": "ok"}
