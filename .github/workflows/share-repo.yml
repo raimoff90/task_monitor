@@ -1,0 +1,24 @@
+name: Share repository snapshot
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  share:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Create ZIP archive
+      run: |
+        zip -r repo_snapshot.zip .
+
+    - name: Upload repository archive
+      uses: actions/upload-artifact@v4
+      with:
+        name: task_monitor_snapshot
+        path: repo_snapshot.zip
